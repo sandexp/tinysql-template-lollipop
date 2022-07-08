@@ -16,6 +16,7 @@ package tablecodec
 import (
 	"bytes"
 	"encoding/binary"
+	"log"
 	"math"
 	"time"
 
@@ -98,7 +99,29 @@ func DecodeRecordKey(key kv.Key) (tableID int64, handle int64, err error) {
 	 *   5. understanding the coding rules is a prerequisite for implementing this function,
 	 *      you can learn it in the projection 1-2 course documentation.
 	 */
-	return
+	if key == nil {
+		return 0, 0, errors.New("Invalid key")
+	}
+	// check prefix
+	if key[0] != 't' {
+		return 0, 0, errors.New("Illegal prefix")
+	}
+	// skip prefix
+	next := key[1:]
+	// 1. read table id
+	next, tableID, err = codec.DecodeInt(next[:])
+	if err != nil {
+		log.Printf("[Decode][Error]: Decode failed -> %s",err.Error())
+	}
+	if string(next[0:2]) != "_r" {
+		return 0, 0, errors.New("Illegal record info")
+	}
+	// skip record prefix
+	next = next[2:]
+
+	// 2. set handle
+	next, handle, err = codec.DecodeInt(next[:])
+	return	tableID,handle,nil
 }
 
 // appendTableIndexPrefix appends table index prefix  "t[tableID]_i".
@@ -148,6 +171,35 @@ func DecodeIndexKeyPrefix(key kv.Key) (tableID int64, indexID int64, indexValues
 	 *   5. understanding the coding rules is a prerequisite for implementing this function,
 	 *      you can learn it in the projection 1-2 course documentation.
 	 */
+	// 1. check if key is valid
+	if key == nil {
+		return 0, 0, nil, errors.New("Invalid input key.")
+	}
+	// check prefix
+	if key[0] != 't' {
+		return 0, 0, nil, errors.New("Illegal prefix")
+	}
+	// skip prefix length
+	next := key[1:]
+
+	// 2. read table id
+	next, tableID, err = codec.DecodeInt(next[:])
+	if err != nil {
+		log.Printf("[Decode][Error]: Decode failed -> %s",err.Error())
+	}
+	// check index prefix
+	if string(next[0:2]) != "_i" {
+		return 0, 0, nil, errors.New("Illegal index prefix")
+	}
+	// skip recordPrefixSepLength
+	next = next[2:]
+	// 3. read index id
+	next, indexID, err = codec.DecodeInt(next[:])
+	if err != nil {
+		log.Printf("[Decode][Error]: Decode failed -> %s",err.Error())
+	}
+	// 4. read index value
+	indexValues = next[:]
 	return tableID, indexID, indexValues, nil
 }
 
