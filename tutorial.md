@@ -4,7 +4,7 @@
 
 ## 如何参与课程
 
-本课程使用 [Github Classroom](https://classroom.github.com/) 进行作业内容管理。如果你想参与本课程，可以通过我们创建的 [作业模版](https://classroom.github.com/a/aioto_CO) 接收作业内容，它将会自动为你生成一个作业仓库，该仓库位于 xxx 组织下。
+本课程使用 [Github Classroom](https://classroom.github.com/)进行作业内容管理。如果你想参与本课程，可以通过我们创建的 [作业模版](https://classroom.github.com/a/aioto_CO) 接收作业内容，它将会自动为你生成一个作业仓库，该仓库位于 xxx 组织下。
 
 ## 本地工作
 
