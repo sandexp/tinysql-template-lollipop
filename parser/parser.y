@@ -811,6 +811,7 @@ import (
 	InsertValues			"Rest part of INSERT/REPLACE INTO statement"
 	JoinTable 			"join table"
 	JoinType			"join type"
+	// JoinCondition       "join condition"
 	LocationLabelList		"location label name list"
 	LikeEscapeOpt 			"like escape option"
 	LikeTableWithOrWithoutParen	"LIKE table_name or ( LIKE table_name )"
@@ -3819,6 +3820,56 @@ JoinTable:
          * }
          *
 	 */
+/**
+ |
+    TableRef "INNER" "JOIN" TableRef %prec tableRefPriority
+    {
+        $$ = &ast.Join{Left: $1.(ast.ResultSetNode), Right: $4.(ast.ResultSetNode), Tp: ast.InnerJoin}
+    }
+ |
+    TableRef "LEFT" "JOIN" TableRef %prec tableRefPriority
+    {
+        $$ = &ast.Join{Left: $1.(ast.ResultSetNode), Right: $4.(ast.ResultSetNode), Tp: ast.LeftJoin}
+    }
+ |
+     TableRef "RIGHT" "JOIN" TableRef  %prec tableRefPriority
+     {
+        $$ = &ast.Join{Left: $1.(ast.ResultSetNode), Right: $4.(ast.ResultSetNode), Tp: ast.RightJoin}
+     }
+ |
+    TableRef "OUTER" "JOIN" TableRef %prec tableRefPriority
+    {
+        $$ = &ast.Join{Left: $1.(ast.ResultSetNode), Right: $4.(ast.ResultSetNode), Tp: ast.OuterJoin}
+    }
+*/
+ /* on condition */
+ /**
+ |
+    TableRef CrossOpt TableRef JoinCondition %prec tableRefPriority
+ 	{
+ 		$$ = &ast.Join{Left: $1.(ast.ResultSetNode), Right: $3.(ast.ResultSetNode), Tp: ast.CrossJoin, On: $4.(ast.ResultSetNode)}
+ 	}
+ |
+    TableRef "INNER" "JOIN" TableRef JoinCondition %prec tableRefPriority
+    {
+        $$ = &ast.Join{Left: $1.(ast.ResultSetNode), Right: $4.(ast.ResultSetNode), Tp: ast.InnerJoin, On: $5.(ast.ResultSetNode)}
+    }
+ |
+    TableRef "LEFT" "JOIN" TableRef JoinCondition %prec tableRefPriority
+    {
+        $$ = &ast.Join{Left: $1.(ast.ResultSetNode), Right: $4.(ast.ResultSetNode), Tp: ast.LeftJoin, On: $5.(ast.ResultSetNode)}
+    }
+ |
+     TableRef "RIGHT" "JOIN" TableRef JoinCondition %prec tableRefPriority
+     {
+        $$ = &ast.Join{Left: $1.(ast.ResultSetNode), Right: $4.(ast.ResultSetNode), Tp: ast.RightJoin, On: $5.(ast.ResultSetNode)}
+     }
+ |
+    TableRef "OUTER" "JOIN" TableRef JoinCondition %prec tableRefPriority
+    {
+        $$ = &ast.Join{Left: $1.(ast.ResultSetNode), Right: $4.(ast.ResultSetNode), Tp: ast.OuterJoin, On: $5.(ast.ResultSetNode)}
+    }
+ */
 
 JoinType:
 	"LEFT"
@@ -3829,6 +3880,19 @@ JoinType:
 	{
 		$$ = ast.RightJoin
 	}
+
+/**
+JoinCondition:
+    "ON" Expression
+    {
+        $$ = $2
+    }
+|
+    "USING" '(' ColumnNameList ')'
+    {
+        $$ = $3
+    }
+*/
 
 OuterOpt:
 	{}
