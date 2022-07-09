@@ -50,8 +50,6 @@ const (
 	LeftJoin
 	// RightJoin is right Join type.
 	RightJoin
-	// OuterJoin is full join type
-	OuterJoin
 )
 
 // Join represents table join.
