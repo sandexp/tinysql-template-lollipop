@@ -27,6 +27,7 @@ import (
 	"github.com/pingcap/tidb/table"
 	"github.com/pingcap/tidb/table/tables"
 	"github.com/pingcap/tidb/tablecodec"
+	"log"
 )
 
 func onCreateTable(d *ddlCtx, t *meta.Meta, job *model.Job) (ver int64, _ error) {
@@ -133,7 +134,7 @@ func getTableInfoAndCancelFaultJob(t *meta.Meta, job *model.Job, schemaID int64)
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
-
+	// only public state table can be visited
 	if tblInfo.State != model.StatePublic {
 		job.State = model.JobStateCancelled
 		return nil, ErrInvalidDDLState.GenWithStack("table %s is not in public, but %s", tblInfo.Name, tblInfo.State)
@@ -373,9 +374,29 @@ func updateVersionAndTableInfoWithCheck(t *meta.Meta, job *model.Job, tblInfo *m
  *       - Consider when you need to update tableInfo.UpdateTS by t.
  *       - `t.UpdateTable` and `updateSchemaVersion` will be used here.
  */
+// usage update state of job and persist into kv to support schema change
 func updateVersionAndTableInfo(t *meta.Meta, job *model.Job, tblInfo *model.TableInfo, shouldUpdateVer bool) (
 	ver int64, err error) {
 	// TODO complete this function.
-
+	if shouldUpdateVer {
+		if tblInfo.ID == job.TableID {
+			log.Printf("[Schema][Info]: Version of TableID %v will incr.", job.ID)
+			// 1. incr version and set schema diff
+			ver, err = updateSchemaVersion(t, job)
+			// 2. update table information
+			dbInfo, err := t.GetDatabase(job.SchemaID)
+			err = t.UpdateTable(dbInfo.ID, tblInfo)
+			// update tblInfo's UpdateTS
+			tblInfo.UpdateTS = t.StartTS
+			return ver, errors.Trace(err)
+		} else {
+			log.Printf("[Schema][Warn]: Job's TableId %v can mismatch with Table ID %v", job.TableID, tblInfo.ID)
+			ver, _ = t.GetSchemaVersion()
+			return ver, errors.Trace(err)
+		}
+	} else {
+		log.Printf("[Schema][Info]: JobID %v do not need to updated.", job.ID)
+	}
+	// 2. update table information
 	return ver, errors.Trace(err)
 }

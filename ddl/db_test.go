@@ -590,7 +590,7 @@ func (s *testDBSuite4) TestAddIndexWithDupCols(c *C) {
 
 	s.tk.MustExec("drop table test_add_index_with_dup")
 }
-
+// OK
 func (s *testDBSuite1) TestAddColumnTooMany(c *C) {
 	s.tk = testkit.NewTestKit(c, s.store)
 	s.tk.MustExec("use test")
@@ -1000,6 +1000,7 @@ func (s *testDBSuite3) TestTransactionWithWriteOnlyColumn(c *C) {
 	s.tk.MustQuery("select a from t1").Check(testkit.Rows("2"))
 }
 
+// OK
 func (s *testDBSuite4) TestAddColumn2(c *C) {
 	s.tk = testkit.NewTestKit(c, s.store)
 	s.mustExec(c, "use test_db")
