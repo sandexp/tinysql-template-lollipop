@@ -14,7 +14,6 @@ package core
 
 import (
 	"context"
-
 	"github.com/pingcap/tidb/expression"
 	"github.com/pingcap/tidb/parser/ast"
 	"github.com/pingcap/tidb/parser/mysql"
@@ -366,7 +365,51 @@ func (p *LogicalProjection) PredicatePushDown(predicates []expression.Expression
 // Hints:
 //   1. predicates need to be discussed in two types: expression.Constant and expression.ScalarFunction
 func (la *LogicalAggregation) PredicatePushDown(predicates []expression.Expression) (ret []expression.Expression, retPlan LogicalPlan) {
-	return predicates, la
+	// push down of aggregation
+	if predicates == nil {
+		return nil, la
+	}
+	if len(la.children) == 0 {
+		return predicates, la
+	}
+	canBePushed := make([]expression.Expression, 0)
+	canNotBePushed := make([]expression.Expression, 0)
+	exprs := make([]expression.Expression, 0)
+	for _, aggFunc := range la.AggFuncs {
+		exprs = append(exprs, aggFunc.Args[0])
+	}
+	groupBy := expression.NewSchema(la.GetGroupByCols()...)
+	for _, condition := range predicates {
+		switch condition.(type) {
+			case *expression.Constant: {
+				canBePushed = append(canBePushed, condition)
+				canNotBePushed = append(canNotBePushed, condition)
+			}
+
+			case *expression.ScalarFunction:{
+				columns := expression.ExtractColumns(condition)
+				ok := true
+				for _, column := range columns {
+					if !groupBy.Contains(column) {
+						ok = false
+						break
+					}
+				}
+				if ok {
+					newFunc := expression.ColumnSubstitute(condition, la.Schema(), exprs)
+					canBePushed = append(canBePushed, newFunc)
+				} else {
+					canNotBePushed = append(canNotBePushed, condition)
+				}
+			}
+
+			default: {
+				canNotBePushed = append(canNotBePushed, condition)
+			}
+		}
+	}
+	la.baseLogicalPlan.PredicatePushDown(canBePushed)
+	return canNotBePushed, la
 }
 
 // PredicatePushDown implements LogicalPlan PredicatePushDown interface.
