@@ -41,7 +41,6 @@ func (s *joinReorderDPSolver) solve(joinGroup []LogicalPlan, eqConds []expressio
 	// And there's some common struct and method like `baseNodeCumCost`, `calcJoinCumCost` you can use in `rule_join_reorder.go`.
 	// Also, you can take a look at `rule_join_reorder_greedy.go`, this file implement the join reorder also based on greedy algorithm.
 	// You'll see some common usages in the greedy version.
-
 	// Note that the join tree may be disconnected. i.e. You need to consider the case `select * from t, t1, t2`.
 	// Build bushy tree for cartesian joins.
 	for _, node := range joinGroup {
