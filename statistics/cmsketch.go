@@ -14,14 +14,14 @@
 package statistics
 
 import (
-	"reflect"
-
 	"github.com/pingcap/errors"
 	"github.com/pingcap/tidb/sessionctx/stmtctx"
 	"github.com/pingcap/tidb/tablecodec"
 	"github.com/pingcap/tidb/types"
 	"github.com/pingcap/tipb/go-tipb"
 	"github.com/spaolacci/murmur3"
+	"math"
+	"reflect"
 )
 
 // CMSketch is used to estimate point queries.
@@ -50,6 +50,12 @@ func (c *CMSketch) InsertBytes(bytes []byte) {
 // insertBytesByCount adds the bytes value into the TopN (if value already in TopN) or CM Sketch by delta, this does not updates c.defaultValue.
 func (c *CMSketch) insertBytesByCount(bytes []byte, count uint64) {
 	// TODO: implement the insert method.
+	c.count += count
+	h1,h2 := murmur3.Sum128(bytes)
+	for row := range c.table {
+		bucket := c.HashValue(h1, h2, row)
+		c.table[row][bucket] += uint32(count)
+	}
 }
 
 func (c *CMSketch) queryValue(sc *stmtctx.StatementContext, val types.Datum) (uint64, error) {
@@ -68,7 +74,39 @@ func (c *CMSketch) QueryBytes(d []byte) uint64 {
 
 func (c *CMSketch) queryHashValue(h1, h2 uint64) uint64 {
 	// TODO: implement the query method.
-	return uint64(0)
+	vals := make([]uint32, c.depth)
+	min := uint32(math.MaxUint32)
+	temp := uint32(1)
+	for row := range c.table {
+		// each row get a bucket to operate
+		bucket := c.HashValue(h1, h2, row)
+		if c.table[row][bucket] < min {
+			min = c.table[row][bucket]
+		}
+
+		noise := (c.count - uint64(c.table[row][bucket])) / (uint64(c.width) - 1)
+		if uint64(c.table[row][bucket]) == 0 {
+			vals[row] = 0
+		} else if uint64(c.table[row][bucket]) < noise {
+			vals[row] = temp
+		} else {
+			vals[row] = c.table[row][bucket] - uint32(noise) + temp
+		}
+	}
+
+	res := vals[(c.depth-1)/2] + (vals[c.depth/2]-vals[(c.depth-1)/2])/2
+	if res > min+temp {
+		res = min + temp
+	}
+	if res == 0 {
+		return uint64(0)
+	}
+	return uint64(res-temp)
+}
+
+func (c *CMSketch) HashValue(h1 uint64, h2 uint64, val int) uint64 {
+	hash := (h1 + h2*uint64(val)) % uint64(c.width)
+	return hash
 }
 
 // MergeCMSketch merges two CM Sketch.
