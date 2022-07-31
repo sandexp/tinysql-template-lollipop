@@ -136,6 +136,7 @@ func (s *joinReorderDPSolver) solve(joinGroup []LogicalPlan, eqConds []expressio
 	for _, edge := range totalNonEqEdges {
 		remainedOtherConds = append(remainedOtherConds, edge.expr)
 	}
+
 	// Build bushy tree for cartesian joins.
 	return s.makeBushyJoin(joins, remainedOtherConds), nil
 }
